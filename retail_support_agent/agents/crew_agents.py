@@ -4,7 +4,7 @@ Implements multi-agent collaboration with specialized roles
 """
 
 from crewai import Agent, Task, Crew, Process
-from crewai_tools import tool
+from langchain.tools import tool  # Use LangChain's tool decorator (more stable)
 from langchain_openai import ChatOpenAI
 from typing import List, Dict, Optional
 import sys
@@ -40,18 +40,9 @@ class RetailSupportCrew:
     def setup_tools(self):
         """Setup custom tools for agents"""
 
-        @tool("Product Search Tool")
+        @tool
         def search_products(query: str) -> str:
-            """
-            Search for products based on customer query.
-            Use this tool to find relevant products in the catalog.
-
-            Args:
-                query: Customer's product search query
-
-            Returns:
-                Formatted product information
-            """
+            """Search for products based on customer query. Use this tool to find relevant products in the catalog."""
             try:
                 results = self.rag_system.similarity_search(query, k=3)
                 output = []
@@ -72,18 +63,9 @@ Details:
             except Exception as e:
                 return f"Error searching products: {str(e)}"
 
-        @tool("Review Analysis Tool")
+        @tool
         def analyze_reviews(product_query: str) -> str:
-            """
-            Analyze customer reviews for a specific product.
-            Use this to understand customer sentiment and feedback.
-
-            Args:
-                product_query: Product name or query
-
-            Returns:
-                Review analysis and insights
-            """
+            """Analyze customer reviews for a specific product. Use this to understand customer sentiment and feedback."""
             try:
                 results = self.rag_system.similarity_search(product_query, k=1)
                 if results:
@@ -98,18 +80,9 @@ Details:
             except Exception as e:
                 return f"Error analyzing reviews: {str(e)}"
 
-        @tool("Product Comparison Tool")
+        @tool
         def compare_products(product_names: str) -> str:
-            """
-            Compare multiple products based on features, price, and ratings.
-            Provide product names separated by commas.
-
-            Args:
-                product_names: Comma-separated product names to compare
-
-            Returns:
-                Comparison results
-            """
+            """Compare multiple products based on features, price, and ratings. Provide product names separated by commas."""
             try:
                 products = [p.strip() for p in product_names.split(',')]
                 comparison = []
