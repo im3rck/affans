@@ -194,6 +194,11 @@ Customer Reviews:
                 f.write(json.dumps(item) + '\n')
         print(f"Saved fine-tuning data to {output_dir}/finetuning_data.jsonl")
 
+        # Save processed products as CSV for ML analysis
+        processed_df = self.df.copy()
+        processed_df.to_csv(f"{output_dir}/processed_products.csv", index=False)
+        print(f"Saved processed products to {output_dir}/processed_products.csv")
+
         # Save summary statistics
         stats = {
             'total_products': len(rag_documents),
@@ -210,7 +215,7 @@ Customer Reviews:
 
 def main():
     """Main preprocessing pipeline"""
-    preprocessor = AmazonDataPreprocessor('../data/amazon.csv')
+    preprocessor = AmazonDataPreprocessor('./data/amazon.csv')
 
     # Load data
     df = preprocessor.load_data()
@@ -222,7 +227,7 @@ def main():
     training_data = preprocessor.create_finetuning_dataset()
 
     # Save processed data
-    stats = preprocessor.save_processed_data(rag_documents, training_data, '../data/processed')
+    stats = preprocessor.save_processed_data(rag_documents, training_data, './data/processed')
 
     print("\n" + "="*50)
     print("Preprocessing Complete!")

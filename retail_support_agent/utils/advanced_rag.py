@@ -79,7 +79,7 @@ class AdvancedRAGSystem:
         try:
             # Get all documents
             results = self.vectorstore.get()
-            if results and 'documents' in results:
+            if results and 'documents' in results and len(results['documents']) > 0:
                 self.documents = [
                     Document(
                         page_content=content,
@@ -93,8 +93,15 @@ class AdvancedRAGSystem:
 
                 # Tokenize documents for BM25
                 tokenized_docs = [doc.page_content.lower().split() for doc in self.documents]
-                self.bm25 = BM25Okapi(tokenized_docs)
-                print(f"   BM25 initialized with {len(self.documents)} documents")
+                if tokenized_docs and len(tokenized_docs) > 0:
+                    self.bm25 = BM25Okapi(tokenized_docs)
+                    print(f"   BM25 initialized with {len(self.documents)} documents")
+                else:
+                    print("   Warning: No documents to initialize BM25")
+                    self.bm25 = None
+            else:
+                print("   Warning: Vectorstore is empty, skipping BM25 initialization")
+                self.bm25 = None
         except Exception as e:
             print(f"   Warning: Could not initialize BM25: {e}")
             self.bm25 = None
