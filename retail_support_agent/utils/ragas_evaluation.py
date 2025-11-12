@@ -29,7 +29,7 @@ class RAGASEvaluator:
 
     def __init__(
         self,
-        llm_model: str = "gpt-4-turbo-preview",
+        llm_model: str = "gpt-3.5-turbo",  # Using current OpenAI model
         embedding_model: str = "text-embedding-3-small"
     ):
         """Initialize RAGAS evaluator"""
@@ -235,19 +235,28 @@ class RAGASEvaluator:
         results = self.evaluate_rag_system(eval_dataset)
 
         # Convert to DataFrame
-        results_df = pd.DataFrame(results)
+        if hasattr(results, 'to_pandas'):
+            results_df = results.to_pandas()
+        elif isinstance(results, dict):
+            # If it's a dict of scores, convert directly
+            results_df = pd.DataFrame([results])
+        else:
+            # Try direct conversion
+            try:
+                results_df = pd.DataFrame(results)
+            except:
+                # Fallback: create from dict
+                results_df = pd.DataFrame([dict(results)])
 
         # Display results
         print("\n" + "="*70)
         print("EVALUATION RESULTS")
         print("="*70)
 
-        if hasattr(results, 'to_pandas'):
-            print("\nMetric Scores:")
-            print(results_df.describe())
-        else:
-            print("\nResults:")
-            print(results)
+        print("\nMetric Scores:")
+        print(results_df.describe())
+        print("\nAll Results:")
+        print(results_df)
 
         # Save results
         if output_file:
