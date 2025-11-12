@@ -13,6 +13,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain.schema import Document
+from langchain_community.embeddings import HuggingFaceEmbeddings
 import numpy as np
 
 
@@ -26,7 +27,16 @@ class RAGSystem:
         embedding_model: str = "text-embedding-3-small",
         use_openai: bool = True
     ):
-        """Initialize RAG system"""
+        """
+        Initialize RAG system
+
+        Args:
+            collection_name: Name for the vector store collection
+            persist_directory: Directory to persist vector store
+            embedding_model: Model name for embeddings
+            use_openai: If True, use OpenAI embeddings (requires API key).
+                       If False, use free local HuggingFace embeddings
+        """
         self.collection_name = collection_name
         self.persist_directory = persist_directory
         self.embedding_model_name = embedding_model
@@ -34,10 +44,25 @@ class RAGSystem:
 
         # Initialize embeddings
         if use_openai:
-            self.embeddings = OpenAIEmbeddings(model=embedding_model)
+            try:
+                print("Initializing OpenAI embeddings...")
+                self.embeddings = OpenAIEmbeddings(model=embedding_model)
+            except Exception as e:
+                print(f"Warning: Could not initialize OpenAI embeddings: {e}")
+                print("Falling back to free local embeddings...")
+                self.use_openai = False
+                self.embeddings = HuggingFaceEmbeddings(
+                    model_name="sentence-transformers/all-MiniLM-L6-v2",
+                    model_kwargs={'device': 'cpu'},
+                    encode_kwargs={'normalize_embeddings': True}
+                )
         else:
-            # Fallback to sentence transformers
-            self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+            print("Using free local HuggingFace embeddings (no API key required)...")
+            self.embeddings = HuggingFaceEmbeddings(
+                model_name="sentence-transformers/all-MiniLM-L6-v2",
+                model_kwargs={'device': 'cpu'},
+                encode_kwargs={'normalize_embeddings': True}
+            )
 
         self.vectorstore = None
         self.documents = []
@@ -210,14 +235,26 @@ class RAGSystem:
         }
 
 
-def setup_rag_system(documents_path: str, persist_directory: str) -> RAGSystem:
-    """Complete RAG system setup pipeline"""
+def setup_rag_system(documents_path: str, persist_directory: str, use_openai: bool = False) -> RAGSystem:
+    """
+    Complete RAG system setup pipeline
+
+    Args:
+        documents_path: Path to processed documents JSON
+        persist_directory: Directory to store vector database
+        use_openai: If True, use OpenAI embeddings (requires API key).
+                   If False, use free local HuggingFace embeddings (default)
+    """
     print("="*60)
     print("Setting up RAG System")
     print("="*60)
 
-    # Initialize RAG system
-    rag = RAGSystem(persist_directory=persist_directory)
+    if not use_openai:
+        print("💡 Using FREE local embeddings (no API key required)")
+        print("   This may take a few minutes to download the model first time...")
+
+    # Initialize RAG system with chosen embedding type
+    rag = RAGSystem(persist_directory=persist_directory, use_openai=use_openai)
 
     # Load documents
     documents = rag.load_documents(documents_path)

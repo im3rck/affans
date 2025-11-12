@@ -84,7 +84,8 @@ if 'system_initialized' not in st.session_state:
 def initialize_rag_system():
     """Initialize RAG system (cached)"""
     with st.spinner("Loading RAG system..."):
-        rag = RAGSystem(persist_directory="./vectorstore/chroma_db")
+        # Use local embeddings by default (no API key needed)
+        rag = RAGSystem(persist_directory="./vectorstore/chroma_db", use_openai=False)
         try:
             rag.load_vectorstore()
             return rag, True
