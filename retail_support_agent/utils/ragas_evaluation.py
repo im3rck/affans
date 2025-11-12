@@ -7,6 +7,10 @@ import os
 import json
 from typing import List, Dict, Optional
 import pandas as pd
+
+# Fix for Git import error in RAGAS (Windows compatibility)
+os.environ['GIT_PYTHON_REFRESH'] = 'quiet'
+
 from datasets import Dataset
 from ragas import evaluate
 from ragas.metrics import (
