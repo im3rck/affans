@@ -21,7 +21,7 @@ class RetailSupportCrew:
     def __init__(
         self,
         rag_system: RAGSystem,
-        model_name: str = "gpt-4-turbo-preview",
+        model_name: str = "gpt-3.5-turbo",  # Using gpt-3.5-turbo (available and affordable)
         temperature: float = 0.7
     ):
         """Initialize the crew with RAG system"""

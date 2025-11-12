@@ -24,8 +24,8 @@ class RAGSystem:
         self,
         collection_name: str = "amazon_products",
         persist_directory: str = "./vectorstore/chroma_db",
-        embedding_model: str = "text-embedding-3-small",
-        use_openai: bool = True
+        embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
+        use_openai: bool = False  # Default to FREE local embeddings
     ):
         """
         Initialize RAG system
