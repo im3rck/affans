@@ -28,10 +28,7 @@ class RetailSupportCrew:
         self.rag_system = rag_system
         self.llm = ChatOpenAI(model=model_name, temperature=temperature)
 
-        # Initialize tools
-        self.setup_tools()
-
-        # Initialize agents
+        # Initialize agents (without custom tools for now to avoid compatibility issues)
         self.customer_support_agent = self.create_customer_support_agent()
         self.product_expert_agent = self.create_product_expert_agent()
         self.review_analyzer_agent = self.create_review_analyzer_agent()
@@ -119,8 +116,7 @@ Details:
             escalate complex issues to specialized agents when needed.""",
             verbose=True,
             allow_delegation=True,
-            llm=self.llm,
-            tools=[self.search_products_tool]
+            llm=self.llm
         )
 
     def create_product_expert_agent(self) -> Agent:
@@ -135,8 +131,7 @@ Details:
             compatibility, and use cases.""",
             verbose=True,
             allow_delegation=False,
-            llm=self.llm,
-            tools=[self.search_products_tool, self.compare_products_tool]
+            llm=self.llm
         )
 
     def create_review_analyzer_agent(self) -> Agent:
@@ -150,8 +145,7 @@ Details:
             decisions by presenting balanced views from actual user experiences.""",
             verbose=True,
             allow_delegation=False,
-            llm=self.llm,
-            tools=[self.analyze_reviews_tool]
+            llm=self.llm
         )
 
     def create_recommendation_agent(self) -> Agent:
@@ -165,9 +159,26 @@ Details:
             opportunities while ensuring customer satisfaction.""",
             verbose=True,
             allow_delegation=True,
-            llm=self.llm,
-            tools=[self.search_products_tool, self.compare_products_tool]
+            llm=self.llm
         )
+
+    def _get_rag_context(self, query: str, k: int = 3) -> str:
+        """Helper method to retrieve context from RAG system"""
+        try:
+            results = self.rag_system.similarity_search(query, k=k)
+            context_parts = []
+            for i, doc in enumerate(results, 1):
+                metadata = doc.metadata
+                context_parts.append(f"""
+Product {i}: {metadata.get('product_name', 'N/A')}
+Category: {metadata.get('category', 'N/A')}
+Price: {metadata.get('price', 'N/A')}
+Rating: {metadata.get('rating', 'N/A')}/5
+Details: {doc.page_content[:400]}...
+""")
+            return "\n".join(context_parts)
+        except Exception as e:
+            return f"Unable to retrieve product information: {str(e)}"
 
     def handle_customer_query(self, query: str, query_type: str = "general") -> str:
         """
@@ -182,17 +193,22 @@ Details:
         """
 
         if query_type == "product_search":
+            # Retrieve context from RAG system
+            context = self._get_rag_context(query, k=3)
+
             task = Task(
                 description=f"""
                 Customer Query: {query}
 
-                Task: Search for products matching the customer's requirements and provide
-                detailed information including:
+                Available Product Information:
+                {context}
+
+                Task: Based on the product information above, provide a helpful response including:
                 1. Product names and descriptions
                 2. Pricing information
                 3. Ratings and review counts
                 4. Key features
-                5. Product links
+                5. Your recommendations
 
                 Be specific and helpful in your response.
                 """,
@@ -208,11 +224,17 @@ Details:
             )
 
         elif query_type == "review_analysis":
+            # Retrieve context from RAG system
+            context = self._get_rag_context(query, k=2)
+
             task = Task(
                 description=f"""
                 Customer Query: {query}
 
-                Task: Analyze customer reviews for the requested product and provide:
+                Product Information and Reviews:
+                {context}
+
+                Task: Based on the product information and reviews above, analyze:
                 1. Overall sentiment (positive/negative/mixed)
                 2. Common praises from customers
                 3. Common complaints or issues
@@ -232,11 +254,17 @@ Details:
             )
 
         elif query_type == "comparison":
+            # Retrieve context from RAG system
+            context = self._get_rag_context(query, k=4)
+
             task = Task(
                 description=f"""
                 Customer Query: {query}
 
-                Task: Compare the requested products and provide:
+                Products to Compare:
+                {context}
+
+                Task: Based on the product information above, provide:
                 1. Side-by-side feature comparison
                 2. Price comparison
                 3. Rating comparison
@@ -257,12 +285,18 @@ Details:
             )
 
         elif query_type == "recommendation":
+            # Retrieve context from RAG system
+            context = self._get_rag_context(query, k=5)
+
             task = Task(
                 description=f"""
                 Customer Query: {query}
 
-                Task: Based on the customer's needs, provide personalized recommendations:
-                1. Find 2-3 suitable products
+                Available Products:
+                {context}
+
+                Task: Based on the customer's needs and available products, provide personalized recommendations:
+                1. Identify 2-3 suitable products from the list above
                 2. Explain why each product matches their needs
                 3. Compare prices and features
                 4. Provide a final recommendation
@@ -281,23 +315,31 @@ Details:
             )
 
         else:  # general query - multi-agent collaboration
+            # Retrieve context from RAG system
+            context = self._get_rag_context(query, k=3)
+
             # Create tasks for multi-agent workflow
             support_task = Task(
                 description=f"""
                 Customer Query: {query}
 
-                Task: Understand the customer's query and determine the best way to help.
-                Route to appropriate specialists if needed.
+                Available Product Information:
+                {context}
+
+                Task: Understand the customer's query and provide helpful assistance based on the available product information.
                 """,
                 agent=self.customer_support_agent,
-                expected_output="Initial customer query analysis and routing decision"
+                expected_output="Helpful response to customer query with product information"
             )
 
             expert_task = Task(
                 description=f"""
-                Based on the customer query: {query}
+                Customer Query: {query}
 
-                Task: Provide expert product information and technical details.
+                Product Information:
+                {context}
+
+                Task: Provide expert product information and technical details based on the available information.
                 """,
                 agent=self.product_expert_agent,
                 expected_output="Expert product information and technical guidance"
